@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torch.tensor import Tensor
+from torch import Tensor
 from utils.test_env import EnvTest
 from core.deep_q_learning_torch import DQN
 from q2_schedule import LinearExploration, LinearSchedule
@@ -14,6 +14,7 @@ class Linear(DQN):
     """
     Implement Fully Connected with Tensorflow
     """
+
     def initialize_models(self):
         """Creates the 2 separate networks (Q network and Target network). The input
         to these models will be an img_height * img_width image
@@ -35,9 +36,12 @@ class Linear(DQN):
         ##############################################################
         ################ YOUR CODE HERE (2 lines) ##################
 
+        in_features = img_width * img_height * n_channels * self.config.state_history
+        self.q_network = nn.Linear(in_features=in_features, out_features=num_actions)
+        self.target_network = nn.Linear(in_features=in_features, out_features=num_actions)
+
         ##############################################################
         ######################## END YOUR CODE #######################
-
 
     def get_q_values(self, state, network='q_network'):
         """
@@ -60,12 +64,14 @@ class Linear(DQN):
 
         ##############################################################
         ################ YOUR CODE HERE - 3-5 lines ##################
-
+        network = self.q_network if network == 'q_network' else self.target_network
+        batch_size = state.shape[0]
+        x = state.reshape((batch_size, -1))
+        out = network(x)
         ##############################################################
         ######################## END YOUR CODE #######################
 
         return out
-
 
     def update_target(self):
         """
@@ -84,18 +90,17 @@ class Linear(DQN):
 
         ##############################################################
         ################### YOUR CODE HERE - 1-2 lines ###############
-
+        self.target_network.load_state_dict(self.q_network.state_dict())
         ##############################################################
         ######################## END YOUR CODE #######################
 
-
-    def calc_loss(self, q_values : Tensor, target_q_values : Tensor,
-                    actions : Tensor, rewards: Tensor, done_mask: Tensor) -> Tensor:
+    def calc_loss(self, q_values: Tensor, target_q_values: Tensor,
+                  actions: Tensor, rewards: Tensor, done_mask: Tensor) -> Tensor:
         """
         Calculate the MSE loss of this step.
         The loss for an example is defined as:
             Q_samp(s) = r if done
-                        = r + gamma * max_a' Q_target(s', a')
+                        = r + gamma * max_a' Q_target(s', a'), else
             loss = (Q_samp(s) - Q(s, a))^2
 
         Args:
@@ -123,10 +128,14 @@ class Linear(DQN):
 
         ##############################################################
         ##################### YOUR CODE HERE - 3-5 lines #############
-
+        batch_size = actions.shape[0]
+        q_samp = rewards + gamma * torch.max(target_q_values, dim=1)[0] * ~done_mask
+        selector = nn.functional.one_hot(actions.type(torch.int64), num_classes=num_actions)
+        q_values_expanded = torch.sum(q_values * selector, dim=1)
+        loss = torch.nn.functional.mse_loss(q_samp, q_values_expanded)
+        return loss
         ##############################################################
         ######################## END YOUR CODE #######################
-
 
     def add_optimizer(self):
         """
@@ -140,9 +149,11 @@ class Linear(DQN):
         ##############################################################
         #################### YOUR CODE HERE - 1 line #############
 
+        self.optimizer = torch.optim.Adam(self.q_network.parameters())
+        # self.optimizer = torch.optim.Adam(self.q_network.parameters(), lr=0.5)
+
         ##############################################################
         ######################## END YOUR CODE #######################
-
 
 
 if __name__ == '__main__':
@@ -150,11 +161,11 @@ if __name__ == '__main__':
 
     # exploration strategy
     exp_schedule = LinearExploration(env, config.eps_begin,
-            config.eps_end, config.eps_nsteps)
+                                     config.eps_end, config.eps_nsteps)
 
     # learning rate schedule
-    lr_schedule  = LinearSchedule(config.lr_begin, config.lr_end,
-            config.lr_nsteps)
+    lr_schedule = LinearSchedule(config.lr_begin, config.lr_end,
+                                 config.lr_nsteps)
 
     # train model
     model = Linear(env, config)

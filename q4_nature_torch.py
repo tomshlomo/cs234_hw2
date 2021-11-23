@@ -46,7 +46,29 @@ class NatureQN(Linear):
 
         ##############################################################
         ################ YOUR CODE HERE - 25-30 lines lines ################
-
+        sizes = [8, 4, 3]
+        out_channels_list = [32, 64, 64]
+        in_channels = n_channels * self.config.state_history
+        in_channels_list = [in_channels, *out_channels_list[:2]]
+        strides = [4, 2, 1]
+        def create_network():
+            layers = []
+            for size, out_channels, in_channels, stride in zip(sizes, out_channels_list, in_channels_list, strides):
+                layers.append(nn.Conv2d(
+                    in_channels=in_channels,
+                    out_channels=out_channels,
+                    kernel_size=(size, size),
+                    stride=(stride, stride),
+                    padding=((stride - 1) * img_height - stride + size) // 2,
+                ))
+                layers.append(nn.ReLU())
+            layers.append(nn.Flatten())
+            layers.append(nn.Linear(img_height * img_width * out_channels_list[-1], 512))
+            layers.append(nn.ReLU())
+            layers.append(nn.Linear(512, num_actions))
+            return nn.Sequential(*layers)
+        self.q_network = create_network()
+        self.target_network = create_network()
         ##############################################################
         ######################## END YOUR CODE #######################
 
@@ -71,7 +93,11 @@ class NatureQN(Linear):
 
         ##############################################################
         ################ YOUR CODE HERE - 4-5 lines lines ################
-
+        state = torch.movedim(state, 3, 1)
+        if network == 'q_network':
+            out = self.q_network(state)
+        else:
+            out = self.target_network(state)
         ##############################################################
         ######################## END YOUR CODE #######################
         return out

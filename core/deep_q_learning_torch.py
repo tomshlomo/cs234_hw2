@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from typing import Tuple
 from pathlib import Path
-from torch.tensor import Tensor
+from torch import Tensor
 from torch.optim import Optimizer
 from torch.utils.tensorboard import SummaryWriter
 from core.q_learning import QN

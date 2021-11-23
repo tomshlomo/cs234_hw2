@@ -10,11 +10,10 @@ class LinearSchedule(object):
             eps_end: end exploration
             nsteps: number of steps between the two values of eps
         """
-        self.epsilon        = eps_begin
-        self.eps_begin      = eps_begin
-        self.eps_end        = eps_end
-        self.nsteps         = nsteps
-
+        self.epsilon = eps_begin
+        self.eps_begin = eps_begin
+        self.eps_end = eps_end
+        self.nsteps = nsteps
 
     def update(self, t):
         pass
@@ -28,14 +27,18 @@ class LinearSchedule(object):
         # ##############################################################
         # """
         # TODO: modify self.epsilon such that
-		# 	  it is a linear interpolation from self.eps_begin to
-		# 	  self.eps_end as t goes from 0 to self.nsteps
-		# 	  For t > self.nsteps self.epsilon remains constant
+        # 	  it is a linear interpolation from self.eps_begin to
+        # 	  self.eps_end as t goes from 0 to self.nsteps
+        # 	  For t > self.nsteps self.epsilon remains constant
         # """
         # ##############################################################
         # ################ YOUR CODE HERE - 3-4 lines ##################
-		# 1+1
-        #
+        # 1+1
+        if t > self.nsteps:
+            self.epsilon = self.eps_end
+        else:
+            x = t / self.nsteps
+            self.epsilon = self.eps_begin * (1 - x) + self.eps_end * x
         # ##############################################################
         # ######################## END YOUR CODE ############## ########
 
@@ -55,10 +58,7 @@ class LinearExploration(LinearSchedule):
         self.env = env
         super(LinearExploration, self).__init__(eps_begin, eps_end, nsteps)
 
-
     def get_action(self, best_action):
-        pass
-        return best_action
         # """
         # Returns a random action with prob epsilon, otherwise returns the best_action
         #
@@ -80,10 +80,13 @@ class LinearExploration(LinearSchedule):
         # """
         # ##############################################################
         # ################ YOUR CODE HERE - 4-5 lines ##################
-		# pass
+        if np.random.rand() <= self.epsilon:
+            action = self.env.action_space.sample()
+        else:
+            action = best_action
+        return action
         # ##############################################################
         # ######################## END YOUR CODE #######################
-
 
 
 def test1():
